@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>وكيل — موظف ذكي لشركتك يشتغل 24 ساعة</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0b1f1c;--teal:#0f766e;--sand:#f5f1ea;--muted:#5b6b68}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;background:var(--sand);color:var(--ink);line-height:1.8}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  header{padding:22px 0;display:flex;justify-content:space-between;align-items:center}
+  .logo{font-weight:700;font-size:22px}.logo span{color:var(--teal)}
+  .cta{background:var(--ink);color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-weight:600;font-size:14px}
+  .hero{padding:70px 0 50px}
+  .hero h1{font-size:clamp(32px,5vw,54px);line-height:1.3;max-width:760px}
+  .hero h1 em{font-style:normal;color:var(--teal)}
+  .hero p{font-size:19px;color:var(--muted);max-width:620px;margin-top:18px}
+  .hero .try{margin-top:30px;display:inline-flex;gap:10px;align-items:center;background:var(--teal);color:#fff;padding:14px 26px;border-radius:14px;font-weight:600;border:0;font-size:16px;cursor:pointer;font-family:inherit}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:30px 0 60px}
+  .card{background:#fff;border-radius:18px;padding:24px;border:1px solid #e8e2d6}
+  .card .n{font-size:13px;color:var(--teal);font-weight:700}
+  .card h3{font-size:19px;margin:6px 0}
+  .card p{color:var(--muted);font-size:15px}
+  .band{background:var(--ink);color:#fff;border-radius:24px;padding:44px;margin-bottom:60px;display:flex;flex-wrap:wrap;gap:30px;justify-content:space-between;align-items:center}
+  .band h2{font-size:28px}.band p{opacity:.8}
+  .band .big{font-size:44px;font-weight:700;color:#5eead4}
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:30px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">وكيل<span>.</span></div>
+    <a class="cta" href="#trial">جرّب مجانًا 14 يوم</a>
+  </header>
+
+  <section class="hero">
+    <h1>موظف ذكي يرد على عملائك <em>بالواتساب والموقع</em>، ويحجز ويؤهل ويبلغك، 24 ساعة.</h1>
+    <p>نركّب لشركتك وكيل يعرف خدماتك وأسعارك ويتكلم بلهجة عملائك. ما يرد بشي ما يعرفه، ويحوّل للموظف وقت الحاجة.</p>
+    <button class="try" onclick="document.querySelector('#wakeel-root').shadowRoot.querySelector('.btn').click()">جرّبه الحين ←</button>
+  </section>
+
+  <section class="grid">
+    <div class="card"><div class="n">01</div><h3>خدمة العملاء</h3><p>يجاوب على الاستفسارات من معلومات شركتك فقط، في أي وقت.</p></div>
+    <div class="card"><div class="n">02</div><h3>تأهيل العملاء</h3><p>يسأل الأسئلة الصح، ويصنّف العميل: جاهز، مهتم، أو يستكشف.</p></div>
+    <div class="card"><div class="n">03</div><h3>حجز المواعيد</h3><p>يحجز حسب أوقات عملك ويمنع تعارض المواعيد.</p></div>
+    <div class="card"><div class="n">04</div><h3>مساعد الموظفين</h3><p>يجاوب فريقك عن السياسات والإجراءات الداخلية برمز خاص.</p></div>
+  </section>
+
+  <section class="band" id="trial">
+    <div>
+      <h2>التجربة مجانية بالكامل</h2>
+      <p>14 يوم على واتساب شركتك وموقعها، بدون أي التزام.</p>
+    </div>
+    <div class="big">0 ﷼</div>
+  </section>
+
+  <footer>جرّب المساعد من الزر في أسفل الصفحة — هذه نسخة تجريبية لشركة عقارية افتراضية.</footer>
+</div>
+<script src="/widget.js" data-company="demo" defer></script>
+</body>
+</html>

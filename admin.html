@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة تحكم الوكيل</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif}
+  body{background:#f4f5f7;color:#111827;font-size:14px}
+  .top{background:#0b1f1c;color:#fff;padding:14px 22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .top b{font-size:17px;margin-left:auto}
+  select,input,textarea{border:1px solid #d1d5db;border-radius:9px;padding:9px 11px;font-size:14px;width:100%;background:#fff}
+  textarea{min-height:110px;line-height:1.7;resize:vertical}
+  .top select{width:auto;min-width:200px}
+  button{background:#0f766e;color:#fff;border:0;border-radius:9px;padding:9px 16px;cursor:pointer;font-size:14px;white-space:nowrap}
+  button.ghost{background:#e5e7eb;color:#111827}
+  .wrap{max-width:1150px;margin:20px auto;padding:0 18px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .tabs button{background:#fff;color:#374151;border:1px solid #e5e7eb}
+  .tabs button.on{background:#0b1f1c;color:#fff}
+  .card{background:#fff;border-radius:14px;padding:20px;border:1px solid #e5e7eb;margin-bottom:14px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+  .stat{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px}
+  .stat .v{font-size:28px;font-weight:700}.stat .l{color:#6b7280;font-size:13px}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form .full{grid-column:1/-1}
+  label{display:block;font-weight:600;margin-bottom:5px;font-size:13px}
+  label small{font-weight:400;color:#6b7280}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:right;padding:9px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+  th{color:#6b7280;font-weight:600;font-size:12.5px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+  .hot{background:#fee2e2;color:#b91c1c}.warm{background:#fef3c7;color:#92400e}.cold{background:#e0f2fe;color:#075985}
+  .conv{border:1px solid #eee;border-radius:12px;padding:12px;margin-bottom:10px}
+  .conv h4{font-size:13px;color:#6b7280;margin-bottom:8px}
+  .b{padding:7px 11px;border-radius:10px;margin:4px 0;max-width:85%;white-space:pre-wrap;line-height:1.7}
+  .b.user{background:#f3f4f6}.b.model{background:#ecfdf5;margin-right:auto}
+  code,pre{background:#0b1f1c;color:#a7f3d0;padding:12px;border-radius:10px;display:block;direction:ltr;text-align:left;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-all}
+  #login{max-width:340px;margin:12vh auto;text-align:center}
+  .muted{color:#6b7280}.ok{color:#047857}.bad{color:#b91c1c}
+  @media(max-width:700px){.form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="login" class="card">
+  <h2 style="margin-bottom:14px">لوحة تحكم الوكيل</h2>
+  <input id="pw" type="password" placeholder="كلمة المرور">
+  <p id="lerr" class="bad" style="min-height:22px;margin:8px 0"></p>
+  <button id="lbtn" style="width:100%">دخول</button>
+</div>
+
+<div id="app" style="display:none">
+  <div class="top">
+    <b>لوحة تحكم الوكيل</b>
+    <select id="pick"></select>
+    <button id="newBtn" class="ghost">+ شركة جديدة</button>
+    <button id="refresh" class="ghost">تحديث</button>
+  </div>
+  <div class="wrap">
+    <div class="stats" id="stats"></div>
+    <div class="tabs" id="tabs"></div>
+    <div id="view"></div>
+  </div>
+</div>
+
+<script>
+const API = '/api/admin';
+let PW = '', DATA = null, TAB = 'leads';
+try { PW = sessionStorage.getItem('wk_pw') || ''; } catch (e) {}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = d => d ? new Date(d).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+const $ = s => document.querySelector(s);
+
+async function call(method, qs = '', body) {
+  const r = await fetch(API + qs, { method, headers: { 'Content-Type': 'application/json', 'x-admin-key': PW }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'خطأ');
+  return d;
+}
+
+async function login() {
+  PW = $('#pw').value || PW;
+  try {
+    const d = await call('GET');
+    try { sessionStorage.setItem('wk_pw', PW); } catch (e) {}
+    $('#login').style.display = 'none'; $('#app').style.display = 'block';
+    $('#pick').innerHTML = d.companies.map(c => `<option value="${esc(c.slug)}">${esc(c.name)} (${esc(c.slug)})</option>`).join('');
+    if (d.companies.length) load(d.companies[0].slug); else newCompany();
+  } catch (e) { $('#lerr').textContent = e.message; }
+}
+
+async function load(slug) {
+  DATA = await call('GET', '?company=' + encodeURIComponent(slug));
+  $('#pick').value = slug;
+  render();
+}
+
+function render() {
+  const { company: c, leads, bookings, handoffs, messages } = DATA;
+  const convs = new Set(messages.map(m => m.channel + m.user_key)).size;
+  const left = c.plan === 'trial' && c.trial_ends_at ? Math.ceil((new Date(c.trial_ends_at) - new Date()) / 864e5) : null;
+  $('#stats').innerHTML = [
+    ['محادثات', convs], ['عملاء محتملين', leads.length],
+    ['عملاء جاهزين 🔥', leads.filter(l => l.score === 'hot').length],
+    ['مواعيد', bookings.length], ['تحويلات مفتوحة', handoffs.filter(h => h.status === 'open').length],
+    ['الباقة', c.plan === 'paid' ? 'مدفوعة' : (left > 0 ? `تجربة · باقي ${left} يوم` : 'التجربة انتهت')]
+  ].map(([l, v]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${l}</div></div>`).join('');
+
+  const tabs = [['leads', 'العملاء المحتملين'], ['bookings', 'المواعيد'], ['handoffs', 'التحويلات'], ['convs', 'المحادثات'], ['settings', 'إعدادات الوكيل'], ['install', 'التركيب']];
+  $('#tabs').innerHTML = tabs.map(([k, l]) => `<button data-t="${k}" class="${TAB === k ? 'on' : ''}">${l}</button>`).join('');
+  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { TAB = b.dataset.t; render(); });
+
+  const v = $('#view');
+  const scoreAr = { hot: 'جاهز', warm: 'مهتم', cold: 'يستكشف' };
+  const chAr = { web: 'الموقع', whatsapp: 'واتساب', internal: 'داخلي' };
+
+  if (TAB === 'leads') v.innerHTML = `<div class="card">${leads.length ? `<table><tr><th>التقييم</th><th>الاسم</th><th>الجوال</th><th>الاحتياج</th><th>الميزانية</th><th>التوقيت</th><th>القناة</th><th>التاريخ</th></tr>${leads.map(l => `<tr><td><span class="pill ${esc(l.score)}">${scoreAr[l.score] || esc(l.score)}</span></td><td>${esc(l.name)}</td><td dir="ltr">${esc(l.phone)}</td><td>${esc(l.need)}${l.notes ? `<br><small class="muted">${esc(l.notes)}</small>` : ''}</td><td>${esc(l.budget)}</td><td>${esc(l.timeline)}</td><td>${chAr[l.channel] || ''}</td><td>${fmt(l.created_at)}</td></tr>`).join('')}</table>` : '<p class="muted">ما فيه عملاء محتملين للحين.</p>'}</div>`;
+
+  if (TAB === 'bookings') v.innerHTML = `<div class="card">${bookings.length ? `<table><tr><th>التاريخ</th><th>الوقت</th><th>الاسم</th><th>الجوال</th><th>الغرض</th><th>الحالة</th></tr>${bookings.map(b => `<tr><td>${esc(b.date)}</td><td>${esc(b.time)}</td><td>${esc(b.name)}</td><td dir="ltr">${esc(b.phone)}</td><td>${esc(b.purpose)}</td><td><select data-id="${b.id}" data-table="bookings">${['pending', 'confirmed', 'done', 'cancelled'].map(s => `<option value="${s}" ${b.status === s ? 'selected' : ''}>${{ pending: 'بانتظار التأكيد', confirmed: 'مؤكد', done: 'تم', cancelled: 'ملغي' }[s]}</option>`).join('')}</select></td></tr>`).join('')}</table>` : '<p class="muted">ما فيه مواعيد للحين.</p>'}</div>`;
+
+  if (TAB === 'handoffs') v.innerHTML = `<div class="card">${handoffs.length ? `<table><tr><th>السبب</th><th>الاسم</th><th>الجوال</th><th>القناة</th><th>التاريخ</th><th>الحالة</th></tr>${handoffs.map(h => `<tr><td>${esc(h.reason)}</td><td>${esc(h.name)}</td><td dir="ltr">${esc(h.phone || (h.channel === 'whatsapp' ? h.user_key : ''))}</td><td>${chAr[h.channel] || ''}</td><td>${fmt(h.created_at)}</td><td><select data-id="${h.id}" data-table="handoffs"><option value="open" ${h.status === 'open' ? 'selected' : ''}>مفتوح</option><option value="closed" ${h.status === 'closed' ? 'selected' : ''}>مغلق</option></select></td></tr>`).join('')}</table>` : '<p class="muted">ما فيه تحويلات.</p>'}</div>`;
+
+  v.querySelectorAll('select[data-id]').forEach(s => s.onchange = async () => {
+    await call('POST', '', { action: 'set_status', table: s.dataset.table, id: +s.dataset.id, status: s.value });
+  });
+
+  if (TAB === 'convs') {
+    const groups = {};
+    [...messages].reverse().forEach(m => { const k = m.channel + '|' + m.user_key; (groups[k] = groups[k] || []).push(m); });
+    const list = Object.entries(groups).reverse();
+    v.innerHTML = `<div class="card">${list.length ? list.map(([k, ms]) => { const [ch, u] = k.split('|'); return `<div class="conv"><h4>${chAr[ch]} · <span dir="ltr">${esc(ch === 'whatsapp' ? u : u.slice(0, 10))}</span> · ${fmt(ms[ms.length - 1].created_at)}</h4>${ms.map(m => `<div class="b ${m.role}">${esc(m.content)}</div>`).join('')}</div>`; }).join('') : '<p class="muted">ما فيه محادثات.</p>'}</div>`;
+  }
+
+  if (TAB === 'settings') settingsForm(c);
+
+  if (TAB === 'install') {
+    const o = location.origin;
+    v.innerHTML = `<div class="card">
+      <h3>1) ويدجت الموقع</h3><p class="muted" style="margin:6px 0 10px">انسخ السطر هذا وحطه قبل &lt;/body&gt; في موقع الشركة:</p>
+      <pre>&lt;script src="${o}/widget.js" data-company="${esc(c.slug)}" defer&gt;&lt;/script&gt;</pre>
+      <h3 style="margin-top:22px">2) واتساب</h3><p class="muted" style="margin:6px 0 10px">في Meta for Developers > WhatsApp > Configuration، حط:</p>
+      <pre>Callback URL:  ${o}/api/whatsapp
+Verify token:  (قيمة WA_VERIFY_TOKEN في Vercel)
+Webhook field: messages</pre>
+      <p class="muted" style="margin-top:8px">وبعدها حط Phone number ID في إعدادات الوكيل.</p>
+      <h3 style="margin-top:22px">3) المساعد الداخلي للموظفين</h3>
+      <pre>${o}/internal.html?company=${esc(c.slug)}</pre>
+      <p class="muted" style="margin-top:8px">الموظف يدخل برمز الدخول الموجود في الإعدادات.</p>
+    </div>`;
+  }
+}
+
+const FIELDS = [
+  ['slug', 'المعرّف', 'إنجليزي بدون مسافات، مثل flow-mena'], ['name', 'اسم الشركة'],
+  ['color', 'لون الويدجت', 'مثل #0f766e'], ['greeting', 'رسالة الترحيب'],
+  ['knowledge', 'معلومات الشركة', 'الخدمات، الأسعار، الأسئلة الشائعة، العنوان، أي شي العميل ممكن يسأل عنه', 'full'],
+  ['hours', 'أوقات العمل', '', 'ta'], ['booking_rules', 'قواعد الحجز', 'مدة الموعد، أنواعه، شروطه', 'ta'],
+  ['qualify_questions', 'أسئلة تأهيل العميل', '', 'full'],
+  ['internal_knowledge', 'المعرفة الداخلية للموظفين', 'سياسات، إجراءات، معلومات ما تطلع للعملاء', 'full'],
+  ['internal_code', 'رمز دخول الموظفين'], ['wa_phone_number_id', 'WhatsApp Phone number ID'],
+  ['wa_token', 'توكن واتساب خاص', 'اختياري — لو فاضي يستخدم التوكن العام'],
+  ['plan', 'الباقة'], ['trial_ends_at', 'نهاية التجربة'], ['active', 'الحالة']
+];
+
+function settingsForm(c) {
+  const v = $('#view');
+  v.innerHTML = `<div class="card"><div class="form">${FIELDS.map(([k, l, hint, kind]) => {
+    let el;
+    const val = c[k] ?? '';
+    if (k === 'plan') el = `<select name="plan"><option value="trial" ${val === 'trial' ? 'selected' : ''}>تجربة مجانية</option><option value="paid" ${val === 'paid' ? 'selected' : ''}>مدفوعة</option></select>`;
+    else if (k === 'active') el = `<select name="active"><option value="true" ${c.active !== false ? 'selected' : ''}>شغّال</option><option value="false" ${c.active === false ? 'selected' : ''}>موقف</option></select>`;
+    else if (k === 'trial_ends_at') el = `<input type="date" name="trial_ends_at" value="${val ? esc(String(val).slice(0, 10)) : ''}">`;
+    else if (kind) el = `<textarea name="${k}">${esc(val)}</textarea>`;
+    else el = `<input name="${k}" value="${esc(val)}">`;
+    return `<div class="${kind === 'full' ? 'full' : ''}"><label>${l} ${hint ? `<small>— ${hint}</small>` : ''}</label>${el}</div>`;
+  }).join('')}</div>
+  <div style="margin-top:16px;display:flex;gap:10px;align-items:center"><button id="save">حفظ</button><span id="msg"></span></div></div>`;
+
+  $('#save').onclick = async () => {
+    const row = {};
+    v.querySelectorAll('[name]').forEach(e => row[e.name] = e.value);
+    row.active = row.active === 'true';
+    if (row.trial_ends_at) row.trial_ends_at = new Date(row.trial_ends_at + 'T23:59:00+03:00').toISOString();
+    try {
+      const d = await call('POST', '', { action: 'save_company', company: row });
+      $('#msg').innerHTML = '<span class="ok">تم الحفظ ✓</span>';
+      const list = await call('GET');
+      $('#pick').innerHTML = list.companies.map(x => `<option value="${esc(x.slug)}">${esc(x.name)} (${esc(x.slug)})</option>`).join('');
+      await load(d.company.slug);
+    } catch (e) { $('#msg').innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+  };
+}
+
+function newCompany() {
+  const end = new Date(Date.now() + 14 * 864e5).toISOString();
+  DATA = { company: { slug: '', name: '', color: '#0f766e', greeting: 'هلا والله! كيف أقدر أخدمك اليوم؟', plan: 'trial', trial_ends_at: end, active: true }, leads: [], bookings: [], handoffs: [], messages: [] };
+  TAB = 'settings'; render();
+}
+
+$('#lbtn').onclick = login;
+$('#pw').onkeydown = e => { if (e.key === 'Enter') login(); };
+$('#pick').onchange = e => load(e.target.value);
+$('#newBtn').onclick = newCompany;
+$('#refresh').onclick = () => DATA?.company?.slug && load(DATA.company.slug);
+if (PW) login();
+</script>
+</body>
+</html>
